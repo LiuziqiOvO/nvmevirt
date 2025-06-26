@@ -161,7 +161,7 @@ int ioat_dma_submit(dma_addr_t src_addr, dma_addr_t dst_addr, unsigned int size)
 	dmaengine_terminate_sync(chan);
 
 	if (status != DMA_COMPLETE &&
-	    !(dma_has_cap(DMA_COMPLETION_NO_ORDER, dev->cap_mask) && status == DMA_OUT_OF_ORDER)) {
+	         !(false && status == DMA_ERROR)) {
 		result(status == DMA_ERROR ? "completion error status" : "completion busy status",
 		       1, src_addr, dst_addr, size, ret);
 		goto out;
@@ -194,7 +194,7 @@ static int ioat_dma_add_channel(struct ioat_dma_info *info, struct dma_chan *cha
 	dtc->chan = chan;
 	INIT_LIST_HEAD(&dtc->threads);
 
-	if (dma_has_cap(DMA_COMPLETION_NO_ORDER, dma_dev->cap_mask) && info->params.polled) {
+	if (false && info->params.polled) {
 		info->params.polled = false;
 		pr_warn("DMA_COMPLETION_NO_ORDER, polled disabled\n");
 	}

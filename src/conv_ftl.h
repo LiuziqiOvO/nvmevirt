@@ -1,11 +1,9 @@
-
-
 /*
  * @Author       : $ {git_name} <${git_email}>
  * @Date         : 2025-06-26 15:08:17
- * @LastEditors  :  ${git_name} <${git_email}>
- * @LastEditTime : 2025-06-26 17:10:04
- * @FilePath     : /nvmevirt/conv_ftl.h
+ * @LastEditors  :  lzq 1021578619@qq.com
+ * @LastEditTime : 2025-07-14 16:44:55
+ * @FilePath     : /nvmevirt/src/conv_ftl.h
  * @Description  : 
  */
 // SPDX-License-Identifier: GPL-2.0-only
@@ -18,6 +16,10 @@
 #include "ssd_config.h"
 #include "ssd.h"
 
+// FDP 支持的最大 Reclaim Unit 数量
+#define MAX_RECLAIM_UNITS 16
+#define DEFAULT_RU_COUNT 8
+
 struct convparams {
 	uint32_t gc_thres_lines;
 	uint32_t gc_thres_lines_high;
@@ -25,6 +27,11 @@ struct convparams {
 
 	double op_area_pcent;
 	int pba_pcent; /* (physical space / logical space) * 100*/
+
+	// FDP 相关参数
+	bool fdp_enabled;
+	uint32_t ru_count; /* Number of Reclaim Units */
+	uint32_t ru_size_mb; /* RU size in MB */
 };
 
 struct line {
@@ -34,6 +41,9 @@ struct line {
 	struct list_head entry;
 	/* position in the priority queue for victim lines */
 	size_t pos;
+
+	// FDP: which RU this line belongs to
+	uint32_t ru_id;
 };
 
 /* wp: record next write addr */
@@ -44,6 +54,15 @@ struct write_pointer {
 	uint32_t pg;
 	uint32_t blk;
 	uint32_t pl;
+
+	// FDP: which RU this WP serves
+	uint32_t ru_id;
+};
+
+// FDP: WAF 统计结构
+struct waf_stats {
+	uint64_t external_writes; /* Host writes */
+	uint64_t internal_writes; /* GC writes */
 };
 
 struct line_mgmt {
@@ -71,10 +90,18 @@ struct conv_ftl {
 	struct convparams cp;
 	struct ppa *maptbl; /* page level mapping table */
 	uint64_t *rmap; /* reverse mapptbl, assume it's stored in OOB */
-	struct write_pointer wp;
-	struct write_pointer gc_wp;
+	// struct write_pointer wp;
+	// struct write_pointer gc_wp;
+
+	// FDP: 扩展为 WP 数组以支持多个 RU
+	struct write_pointer wp_array[MAX_RECLAIM_UNITS]; /* Per-RU write pointers */
+	struct write_pointer gc_wp; /* 保持原有的 GC write pointer */
+
 	struct line_mgmt lm;
 	struct write_flow_control wfc;
+
+	// FDP: WAF 统计
+	struct waf_stats waf;
 };
 
 void conv_init_namespace(struct nvmev_ns *ns, uint32_t id, uint64_t size, void *mapped_addr,

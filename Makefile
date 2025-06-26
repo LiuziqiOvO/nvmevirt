@@ -4,15 +4,17 @@ INSTALL_MOD_PATH :=
 
 include Makefile.local
 
+
+
 default:
-		$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
+		$(MAKE) -C $(KERNELDIR) M=$(PWD) SUBDIRS=src modules
 
 install:
-		$(MAKE) INSTALL_MOD_PATH="$(INSTALL_MOD_PATH)" -C $(KERNELDIR) modules_install
+		$(MAKE) INSTALL_MOD_PATH="$(INSTALL_MOD_PATH)" -C $(KERNELDIR) SUBDIRS=src modules_install
 
 .PHONY: clean
 clean:
-	   $(MAKE) -C $(KERNELDIR) M=$(PWD) clean
+	   $(MAKE) -C $(KERNELDIR) M=$(PWD) SUBDIRS=src clean
 	   rm -f cscope.out tags nvmev.S
 
 .PHONY: cscope

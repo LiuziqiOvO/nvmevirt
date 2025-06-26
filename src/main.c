@@ -406,7 +406,7 @@ static int __proc_file_open(struct inode *inode, struct file *file)
 	return single_open(file, __proc_file_read, (char *)file->f_path.dentry->d_name.name);
 }
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 0, 0)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 5, 0)
 static const struct proc_ops proc_file_fops = {
 	.proc_open = __proc_file_open,
 	.proc_write = __proc_file_write,

@@ -19,7 +19,7 @@ static void __make_cq_entry_results(int eid, u16 ret, u32 result0, u32 result1)
 	struct nvme_common_command *cmd = &sq_entry(eid).common;
 	int cq_head = queue->cq_head;
 
-	cq_entry(cq_head) = (struct nvme_completion) {
+	cq_entry(cq_head) = (struct nvme_completion){
 		.command_id = cmd->command_id,
 		.sq_id = 0,
 		.sq_head = eid,
@@ -39,7 +39,6 @@ static void __make_cq_entry(int eid, u16 ret)
 {
 	__make_cq_entry_results(eid, ret, 0, 0);
 }
-
 
 /***
  * Queue managements
@@ -181,7 +180,6 @@ static void __nvmev_admin_delete_sq(int eid)
 	__make_cq_entry(eid, NVME_SC_SUCCESS);
 }
 
-
 /***
  * Log pages
  */
@@ -251,14 +249,14 @@ static void __nvmev_admin_get_log_page(int eid)
 		 * Warn the users and make it perfectly clear that this needs to be implemented.
 		 */
 		NVMEV_ERROR("Unimplemented log page identifier: 0x%hhx,"
-			    "the system will be unstable!\n", cmd->lid);
+			    "the system will be unstable!\n",
+			    cmd->lid);
 		__memset(page, 0, len);
 		break;
 	}
 
 	__make_cq_entry(eid, NVME_SC_SUCCESS);
 }
-
 
 /***
  * Identify functions
@@ -469,7 +467,6 @@ static void __nvmev_admin_identify(int eid)
 	}
 }
 
-
 /***
  * Set/get features
  */
@@ -552,7 +549,6 @@ static void __nvmev_admin_get_features(int eid)
 	__make_cq_entry_results(eid, NVME_SC_SUCCESS, result0, result1);
 }
 
-
 /***
  * Misc
  */
@@ -562,14 +558,13 @@ static void __nvmev_admin_async_event(int eid)
 	// __make_cq_entry(eid, NVME_SC_ASYNC_LIMIT);
 }
 
-
 static void __nvmev_proc_admin_req(int entry_id)
 {
 	struct nvmev_admin_queue *queue = nvmev_vdev->admin_q;
 	struct nvme_command *sqe = &sq_entry(entry_id);
 
-	NVMEV_DEBUG("%s: %d 0x%x 0x%x\n", __func__, entry_id,
-			sqe->common.opcode, sqe->common.command_id);
+	NVMEV_DEBUG("%s: %d 0x%x 0x%x\n", __func__, entry_id, sqe->common.opcode,
+		    sqe->common.command_id);
 
 	switch (sqe->common.opcode) {
 	case nvme_admin_delete_sq:

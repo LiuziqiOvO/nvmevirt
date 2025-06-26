@@ -180,25 +180,84 @@ static struct line *get_next_free_line(struct conv_ftl *conv_ftl)
 	return curline;
 }
 
+// FDP: 从 dsmgmt 字段提取 Placement ID
+static inline uint32_t __extract_placement_id(uint32_t dsmgmt)
+{
+	// Placement ID 通常在 dsmgmt 的低位
+	// 这里采用简单的映射：使用低4位作为 RU ID
+	return dsmgmt & 0xF;
+}
+
+// FDP: 获取指定 RU 的 write pointer
+static struct write_pointer *__get_wp_for_ru(struct conv_ftl *ftl, uint32_t ru_id)
+{
+	if (!ftl->cp.fdp_enabled) {
+		// 非 FDP 模式，使用第一个 WP
+		return &ftl->wp_array[0];
+	}
+	
+	if (ru_id >= ftl->cp.ru_count) {
+		// 无效的 RU ID，使用默认的
+		ru_id = 0;
+	}
+	
+	return &ftl->wp_array[ru_id];
+}
+
 static struct write_pointer *__get_wp(struct conv_ftl *ftl, uint32_t io_type)
 {
-	if (io_type == USER_IO) {
-		return &ftl->wp;
-	} else if (io_type == GC_IO) {
+	if (io_type == GC_IO) {
 		return &ftl->gc_wp;
 	}
-
-	NVMEV_ASSERT(0);
-	return NULL;
+	
+	// 对于 USER_IO，返回默认的第一个 RU 的 WP（兼容模式）
+	return &ftl->wp_array[0];
 }
 
 static void prepare_write_pointer(struct conv_ftl *conv_ftl, uint32_t io_type)
 {
-	struct write_pointer *wp = __get_wp(conv_ftl, io_type);
-	struct line *curline = get_next_free_line(conv_ftl);
+	struct write_pointer *wp;
+	struct line *curline;
+	
+	if (io_type == GC_IO) {
+		wp = &conv_ftl->gc_wp;
+		curline = get_next_free_line(conv_ftl);
+		if (curline) {
+			curline->ru_id = 0; // GC 使用 RU 0
+		}
+	} else {
+		// 为每个 RU 初始化 WP
+		uint32_t ru_count = conv_ftl->cp.fdp_enabled ? conv_ftl->cp.ru_count : 1;
+		for (uint32_t ru_id = 0; ru_id < ru_count; ru_id++) {
+			wp = &conv_ftl->wp_array[ru_id];
+			curline = get_next_free_line(conv_ftl);
+			
+			if (!curline) {
+				NVMEV_ERROR("Failed to get free line for RU %d\n", ru_id);
+				break;
+			}
+			
+			// 标记这个 line 属于哪个 RU
+			curline->ru_id = ru_id;
+			
+			/* wp->curline is always our next-to-write super-block */
+			*wp = (struct write_pointer){
+				.curline = curline,
+				.ch = 0,
+				.lun = 0,
+				.pg = 0,
+				.blk = curline->id,
+				.pl = 0,
+				.ru_id = ru_id,
+			};
+		}
+		return;
+	}
 
-	NVMEV_ASSERT(wp);
-	NVMEV_ASSERT(curline);
+	if (!wp || !curline) {
+		NVMEV_ERROR("Failed to prepare write pointer\n");
+		return;
+	}
 
 	/* wp->curline is always our next-to-write super-block */
 	*wp = (struct write_pointer){
@@ -208,7 +267,43 @@ static void prepare_write_pointer(struct conv_ftl *conv_ftl, uint32_t io_type)
 		.pg = 0,
 		.blk = curline->id,
 		.pl = 0,
+		.ru_id = 0,
 	};
+}
+
+static struct ppa get_new_page(struct conv_ftl *conv_ftl, uint32_t io_type)
+{
+	struct ppa ppa;
+	struct write_pointer *wp = __get_wp(conv_ftl, io_type);
+
+	ppa.ppa = 0;
+	ppa.g.ch = wp->ch;
+	ppa.g.lun = wp->lun;
+	ppa.g.pg = wp->pg;
+	ppa.g.blk = wp->blk;
+	ppa.g.pl = wp->pl;
+
+	NVMEV_ASSERT(ppa.g.pl == 0);
+
+	return ppa;
+}
+
+// FDP: 为指定 RU 获取新页面
+static struct ppa get_new_page_for_ru(struct conv_ftl *conv_ftl, uint32_t ru_id)
+{
+	struct ppa ppa;
+	struct write_pointer *wp = __get_wp_for_ru(conv_ftl, ru_id);
+
+	ppa.ppa = 0;
+	ppa.g.ch = wp->ch;
+	ppa.g.lun = wp->lun;
+	ppa.g.pg = wp->pg;
+	ppa.g.blk = wp->blk;
+	ppa.g.pl = wp->pl;
+
+	NVMEV_ASSERT(ppa.g.pl == 0);
+
+	return ppa;
 }
 
 static void advance_write_pointer(struct conv_ftl *conv_ftl, uint32_t io_type)
@@ -265,6 +360,8 @@ static void advance_write_pointer(struct conv_ftl *conv_ftl, uint32_t io_type)
 	wpp->curline = get_next_free_line(conv_ftl);
 	NVMEV_DEBUG_VERBOSE("wpp: got new clean line %d\n", wpp->curline->id);
 
+	// FDP: 新line继承当前WP的RU ID
+	wpp->curline->ru_id = wpp->ru_id;
 	wpp->blk = wpp->curline->id;
 	check_addr(wpp->blk, spp->blks_per_pl);
 
@@ -279,21 +376,75 @@ out:
 			wpp->ch, wpp->lun, wpp->pl, wpp->blk, wpp->pg, wpp->curline->id);
 }
 
-static struct ppa get_new_page(struct conv_ftl *conv_ftl, uint32_t io_type)
+// FDP: 推进指定 RU 的写指针
+static void advance_write_pointer_for_ru(struct conv_ftl *conv_ftl, uint32_t ru_id)
 {
-	struct ppa ppa;
-	struct write_pointer *wp = __get_wp(conv_ftl, io_type);
+	struct ssdparams *spp = &conv_ftl->ssd->sp;
+	struct line_mgmt *lm = &conv_ftl->lm;
+	struct write_pointer *wpp = __get_wp_for_ru(conv_ftl, ru_id);
 
-	ppa.ppa = 0;
-	ppa.g.ch = wp->ch;
-	ppa.g.lun = wp->lun;
-	ppa.g.pg = wp->pg;
-	ppa.g.blk = wp->blk;
-	ppa.g.pl = wp->pl;
+	NVMEV_DEBUG_VERBOSE("RU%d current wpp: ch:%d, lun:%d, pl:%d, blk:%d, pg:%d\n",
+			ru_id, wpp->ch, wpp->lun, wpp->pl, wpp->blk, wpp->pg);
 
-	NVMEV_ASSERT(ppa.g.pl == 0);
+	check_addr(wpp->pg, spp->pgs_per_blk);
+	wpp->pg++;
+	if ((wpp->pg % spp->pgs_per_oneshotpg) != 0)
+		goto out;
 
-	return ppa;
+	wpp->pg -= spp->pgs_per_oneshotpg;
+	check_addr(wpp->ch, spp->nchs);
+	wpp->ch++;
+	if (wpp->ch != spp->nchs)
+		goto out;
+
+	wpp->ch = 0;
+	check_addr(wpp->lun, spp->luns_per_ch);
+	wpp->lun++;
+	/* in this case, we should go to next lun */
+	if (wpp->lun != spp->luns_per_ch)
+		goto out;
+
+	wpp->lun = 0;
+	/* go to next wordline in the block */
+	wpp->pg += spp->pgs_per_oneshotpg;
+	if (wpp->pg != spp->pgs_per_blk)
+		goto out;
+
+	wpp->pg = 0;
+	/* move current line to {victim,full} line list */
+	if (wpp->curline->vpc == spp->pgs_per_line) {
+		/* all pgs are still valid, move to full line list */
+		NVMEV_ASSERT(wpp->curline->ipc == 0);
+		list_add_tail(&wpp->curline->entry, &lm->full_line_list);
+		lm->full_line_cnt++;
+		NVMEV_DEBUG_VERBOSE("RU%d wpp: move line to full_line_list\n", ru_id);
+	} else {
+		NVMEV_DEBUG_VERBOSE("RU%d wpp: line is moved to victim list\n", ru_id);
+		NVMEV_ASSERT(wpp->curline->vpc >= 0 && wpp->curline->vpc < spp->pgs_per_line);
+		/* there must be some invalid pages in this line */
+		NVMEV_ASSERT(wpp->curline->ipc > 0);
+		pqueue_insert(lm->victim_line_pq, wpp->curline);
+		lm->victim_line_cnt++;
+	}
+	/* current line is used up, pick another empty line */
+	check_addr(wpp->blk, spp->blks_per_pl);
+	wpp->curline = get_next_free_line(conv_ftl);
+	NVMEV_DEBUG_VERBOSE("RU%d wpp: got new clean line %d\n", ru_id, wpp->curline->id);
+
+	// 标记新line属于当前RU
+	wpp->curline->ru_id = ru_id;
+	wpp->blk = wpp->curline->id;
+	check_addr(wpp->blk, spp->blks_per_pl);
+
+	/* make sure we are starting from page 0 in the super block */
+	NVMEV_ASSERT(wpp->pg == 0);
+	NVMEV_ASSERT(wpp->lun == 0);
+	NVMEV_ASSERT(wpp->ch == 0);
+	/* TODO: assume # of pl_per_lun is 1, fix later */
+	NVMEV_ASSERT(wpp->pl == 0);
+out:
+	NVMEV_DEBUG_VERBOSE("RU%d advanced wpp: ch:%d, lun:%d, pl:%d, blk:%d, pg:%d (curline %d)\n",
+			ru_id, wpp->ch, wpp->lun, wpp->pl, wpp->blk, wpp->pg, wpp->curline->id);
 }
 
 static void init_maptbl(struct conv_ftl *conv_ftl)
@@ -349,6 +500,10 @@ static void conv_init_ftl(struct conv_ftl *conv_ftl, struct convparams *cpp, str
 	prepare_write_pointer(conv_ftl, GC_IO);
 
 	init_write_flow_control(conv_ftl);
+	
+	/* FDP: 初始化 WAF 统计 */
+	conv_ftl->waf.external_writes = 0;
+	conv_ftl->waf.internal_writes = 0;
 
 	NVMEV_INFO("Init FTL instance with %d channels (%ld pages)\n", conv_ftl->ssd->sp.nchs,
 		   conv_ftl->ssd->sp.tt_pgs);
@@ -370,6 +525,11 @@ static void conv_init_params(struct convparams *cpp)
 	cpp->gc_thres_lines_high = 2; /* Need only two lines.(host write, gc)*/
 	cpp->enable_gc_delay = 1;
 	cpp->pba_pcent = (int)((1 + cpp->op_area_pcent) * 100);
+	
+	/* FDP: 默认配置 */
+	cpp->fdp_enabled = false;  /* 默认禁用，可通过参数启用 */
+	cpp->ru_count = DEFAULT_RU_COUNT;
+	cpp->ru_size_mb = 512;  /* 默认512MB per RU */
 }
 
 void conv_init_namespace(struct nvmev_ns *ns, uint32_t id, uint64_t size, void *mapped_addr,
@@ -612,6 +772,11 @@ static uint64_t gc_write_page(struct conv_ftl *conv_ftl, struct ppa *old_ppa)
 
 	/* need to advance the write pointer here */
 	advance_write_pointer(conv_ftl, GC_IO);
+	
+	/* FDP: 统计内部写入（GC） */
+	if (conv_ftl->cp.fdp_enabled) {
+		conv_ftl->waf.internal_writes++;
+	}
 
 	if (cpp->enable_gc_delay) {
 		struct nand_cmd gcw = {
@@ -984,7 +1149,24 @@ static bool conv_write(struct nvmev_ns *ns, struct nvmev_request *req, struct nv
 		}
 
 		/* new write */
-		ppa = get_new_page(conv_ftl, USER_IO);
+		// FDP: 检查是否有placement hint并使用相应的RU
+		if (conv_ftl->cp.fdp_enabled && cmd->rw.dsmgmt) {
+			uint32_t ru_id = __extract_placement_id(cmd->rw.dsmgmt);
+			ppa = get_new_page_for_ru(conv_ftl, ru_id);
+			/* 推进对应RU的写指针 */
+			advance_write_pointer_for_ru(conv_ftl, ru_id);
+			/* FDP: 统计外部写入 */
+			conv_ftl->waf.external_writes++;
+		} else {
+			ppa = get_new_page(conv_ftl, USER_IO);
+			/* need to advance the write pointer here */
+			advance_write_pointer(conv_ftl, USER_IO);
+			/* FDP: 统计外部写入（兼容模式） */
+			if (conv_ftl->cp.fdp_enabled) {
+				conv_ftl->waf.external_writes++;
+			}
+		}
+		
 		/* update maptbl */
 		set_maptbl_ent(conv_ftl, local_lpn, &ppa);
 		NVMEV_DEBUG("%s: got new ppa %lld, ", __func__, ppa2pgidx(conv_ftl, &ppa));
@@ -992,9 +1174,6 @@ static bool conv_write(struct nvmev_ns *ns, struct nvmev_request *req, struct nv
 		set_rmap_ent(conv_ftl, local_lpn, &ppa);
 
 		mark_page_valid(conv_ftl, &ppa);
-
-		/* need to advance the write pointer here */
-		advance_write_pointer(conv_ftl, USER_IO);
 
 		/* Aggregate write io in flash page */
 		if (last_pg_in_wordline(conv_ftl, &ppa)) {
