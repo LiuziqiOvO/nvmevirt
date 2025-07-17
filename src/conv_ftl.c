@@ -38,8 +38,8 @@ static uint64_t ppa2pgidx(struct conv_ftl *conv_ftl, struct ppa *ppa)
 	struct ssdparams *spp = &conv_ftl->ssd->sp;
 	uint64_t pgidx;
 
-	NVMEV_DEBUG_VERBOSE("%s: ch:%d, lun:%d, pl:%d, blk:%d, pg:%d\n", __func__,
-			ppa->g.ch, ppa->g.lun, ppa->g.pl, ppa->g.blk, ppa->g.pg);
+	NVMEV_DEBUG_VERBOSE("%s: ch:%d, lun:%d, pl:%d, blk:%d, pg:%d\n", __func__, ppa->g.ch,
+			    ppa->g.lun, ppa->g.pl, ppa->g.blk, ppa->g.pg);
 
 	pgidx = ppa->g.ch * spp->pgs_per_ch + ppa->g.lun * spp->pgs_per_lun +
 		ppa->g.pl * spp->pgs_per_pl + ppa->g.blk * spp->pgs_per_blk + ppa->g.pg;
@@ -195,12 +195,12 @@ static struct write_pointer *__get_wp_for_ru(struct conv_ftl *ftl, uint32_t ru_i
 		// 非 FDP 模式，使用第一个 WP
 		return &ftl->wp_array[0];
 	}
-	
+
 	if (ru_id >= ftl->cp.ru_count) {
 		// 无效的 RU ID，使用默认的
 		ru_id = 0;
 	}
-	
+
 	return &ftl->wp_array[ru_id];
 }
 
@@ -209,7 +209,7 @@ static struct write_pointer *__get_wp(struct conv_ftl *ftl, uint32_t io_type)
 	if (io_type == GC_IO) {
 		return &ftl->gc_wp;
 	}
-	
+
 	// 对于 USER_IO，返回默认的第一个 RU 的 WP（兼容模式）
 	return &ftl->wp_array[0];
 }
@@ -218,7 +218,7 @@ static void prepare_write_pointer(struct conv_ftl *conv_ftl, uint32_t io_type)
 {
 	struct write_pointer *wp;
 	struct line *curline;
-	
+
 	if (io_type == GC_IO) {
 		wp = &conv_ftl->gc_wp;
 		curline = get_next_free_line(conv_ftl);
@@ -231,15 +231,15 @@ static void prepare_write_pointer(struct conv_ftl *conv_ftl, uint32_t io_type)
 		for (uint32_t ru_id = 0; ru_id < ru_count; ru_id++) {
 			wp = &conv_ftl->wp_array[ru_id];
 			curline = get_next_free_line(conv_ftl);
-			
+
 			if (!curline) {
 				NVMEV_ERROR("Failed to get free line for RU %d\n", ru_id);
 				break;
 			}
-			
+
 			// 标记这个 line 属于哪个 RU
 			curline->ru_id = ru_id;
-			
+
 			/* wp->curline is always our next-to-write super-block */
 			*wp = (struct write_pointer){
 				.curline = curline,
@@ -312,8 +312,8 @@ static void advance_write_pointer(struct conv_ftl *conv_ftl, uint32_t io_type)
 	struct line_mgmt *lm = &conv_ftl->lm;
 	struct write_pointer *wpp = __get_wp(conv_ftl, io_type);
 
-	NVMEV_DEBUG_VERBOSE("current wpp: ch:%d, lun:%d, pl:%d, blk:%d, pg:%d\n",
-			wpp->ch, wpp->lun, wpp->pl, wpp->blk, wpp->pg);
+	NVMEV_DEBUG_VERBOSE("current wpp: ch:%d, lun:%d, pl:%d, blk:%d, pg:%d\n", wpp->ch, wpp->lun,
+			    wpp->pl, wpp->blk, wpp->pg);
 
 	check_addr(wpp->pg, spp->pgs_per_blk);
 	wpp->pg++;
@@ -373,7 +373,7 @@ static void advance_write_pointer(struct conv_ftl *conv_ftl, uint32_t io_type)
 	NVMEV_ASSERT(wpp->pl == 0);
 out:
 	NVMEV_DEBUG_VERBOSE("advanced wpp: ch:%d, lun:%d, pl:%d, blk:%d, pg:%d (curline %d)\n",
-			wpp->ch, wpp->lun, wpp->pl, wpp->blk, wpp->pg, wpp->curline->id);
+			    wpp->ch, wpp->lun, wpp->pl, wpp->blk, wpp->pg, wpp->curline->id);
 }
 
 // FDP: 推进指定 RU 的写指针
@@ -383,8 +383,8 @@ static void advance_write_pointer_for_ru(struct conv_ftl *conv_ftl, uint32_t ru_
 	struct line_mgmt *lm = &conv_ftl->lm;
 	struct write_pointer *wpp = __get_wp_for_ru(conv_ftl, ru_id);
 
-	NVMEV_DEBUG_VERBOSE("RU%d current wpp: ch:%d, lun:%d, pl:%d, blk:%d, pg:%d\n",
-			ru_id, wpp->ch, wpp->lun, wpp->pl, wpp->blk, wpp->pg);
+	NVMEV_DEBUG_VERBOSE("RU%d current wpp: ch:%d, lun:%d, pl:%d, blk:%d, pg:%d\n", ru_id,
+			    wpp->ch, wpp->lun, wpp->pl, wpp->blk, wpp->pg);
 
 	check_addr(wpp->pg, spp->pgs_per_blk);
 	wpp->pg++;
@@ -444,7 +444,7 @@ static void advance_write_pointer_for_ru(struct conv_ftl *conv_ftl, uint32_t ru_
 	NVMEV_ASSERT(wpp->pl == 0);
 out:
 	NVMEV_DEBUG_VERBOSE("RU%d advanced wpp: ch:%d, lun:%d, pl:%d, blk:%d, pg:%d (curline %d)\n",
-			ru_id, wpp->ch, wpp->lun, wpp->pl, wpp->blk, wpp->pg, wpp->curline->id);
+			    ru_id, wpp->ch, wpp->lun, wpp->pl, wpp->blk, wpp->pg, wpp->curline->id);
 }
 
 static void init_maptbl(struct conv_ftl *conv_ftl)
@@ -500,7 +500,7 @@ static void conv_init_ftl(struct conv_ftl *conv_ftl, struct convparams *cpp, str
 	prepare_write_pointer(conv_ftl, GC_IO);
 
 	init_write_flow_control(conv_ftl);
-	
+
 	/* FDP: 初始化 WAF 统计 */
 	conv_ftl->waf.external_writes = 0;
 	conv_ftl->waf.internal_writes = 0;
@@ -525,11 +525,14 @@ static void conv_init_params(struct convparams *cpp)
 	cpp->gc_thres_lines_high = 2; /* Need only two lines.(host write, gc)*/
 	cpp->enable_gc_delay = 1;
 	cpp->pba_pcent = (int)((1 + cpp->op_area_pcent) * 100);
-	
+
 	/* FDP: 默认配置 */
-	cpp->fdp_enabled = false;  /* 默认禁用，可通过参数启用 */
+	cpp->fdp_enabled = false; /* 默认禁用，可通过参数启用 */
+#ifdef CONFIG_NVMEVIRT_FDP_ENABLED
+	cpp->fdp_enabled = true; /* 通过 Kbuild 配置启用 FDP */
+#endif
 	cpp->ru_count = DEFAULT_RU_COUNT;
-	cpp->ru_size_mb = 512;  /* 默认512MB per RU */
+	cpp->ru_size_mb = 512; /* 默认512MB per RU */
 }
 
 void conv_init_namespace(struct nvmev_ns *ns, uint32_t id, uint64_t size, void *mapped_addr,
@@ -772,7 +775,7 @@ static uint64_t gc_write_page(struct conv_ftl *conv_ftl, struct ppa *old_ppa)
 
 	/* need to advance the write pointer here */
 	advance_write_pointer(conv_ftl, GC_IO);
-	
+
 	/* FDP: 统计内部写入（GC） */
 	if (conv_ftl->cp.fdp_enabled) {
 		conv_ftl->waf.internal_writes++;
@@ -928,8 +931,8 @@ static int do_gc(struct conv_ftl *conv_ftl, bool force)
 
 	ppa.g.blk = victim_line->id;
 	NVMEV_DEBUG_VERBOSE("GC-ing line:%d,ipc=%d(%d),victim=%d,full=%d,free=%d\n", ppa.g.blk,
-		    victim_line->ipc, victim_line->vpc, conv_ftl->lm.victim_line_cnt,
-		    conv_ftl->lm.full_line_cnt, conv_ftl->lm.free_line_cnt);
+			    victim_line->ipc, victim_line->vpc, conv_ftl->lm.victim_line_cnt,
+			    conv_ftl->lm.full_line_cnt, conv_ftl->lm.free_line_cnt);
 
 	conv_ftl->wfc.credits_to_refill = victim_line->ipc;
 
@@ -1021,7 +1024,8 @@ static bool conv_read(struct nvmev_ns *ns, struct nvmev_request *req, struct nvm
 	};
 
 	NVMEV_ASSERT(conv_ftls);
-	NVMEV_DEBUG_VERBOSE("%s: start_lpn=%lld, len=%lld, end_lpn=%lld", __func__, start_lpn, nr_lba, end_lpn);
+	NVMEV_DEBUG_VERBOSE("%s: start_lpn=%lld, len=%lld, end_lpn=%lld", __func__, start_lpn,
+			    nr_lba, end_lpn);
 	if ((end_lpn / nr_parts) >= spp->tt_pgs) {
 		NVMEV_ERROR("%s: lpn passed FTL range (start_lpn=%lld > tt_pgs=%ld)\n", __func__,
 			    start_lpn, spp->tt_pgs);
@@ -1047,10 +1051,11 @@ static bool conv_read(struct nvmev_ns *ns, struct nvmev_request *req, struct nvm
 			local_lpn = lpn / nr_parts;
 			cur_ppa = get_maptbl_ent(conv_ftl, local_lpn);
 			if (!mapped_ppa(&cur_ppa) || !valid_ppa(conv_ftl, &cur_ppa)) {
-				NVMEV_DEBUG_VERBOSE("lpn 0x%llx not mapped to valid ppa\n", local_lpn);
+				NVMEV_DEBUG_VERBOSE("lpn 0x%llx not mapped to valid ppa\n",
+						    local_lpn);
 				NVMEV_DEBUG_VERBOSE("Invalid ppa,ch:%d,lun:%d,blk:%d,pl:%d,pg:%d\n",
-					    cur_ppa.g.ch, cur_ppa.g.lun, cur_ppa.g.blk,
-					    cur_ppa.g.pl, cur_ppa.g.pg);
+						    cur_ppa.g.ch, cur_ppa.g.lun, cur_ppa.g.blk,
+						    cur_ppa.g.pl, cur_ppa.g.pg);
 				continue;
 			}
 
@@ -1115,10 +1120,11 @@ static bool conv_write(struct nvmev_ns *ns, struct nvmev_request *req, struct nv
 		.xfer_size = spp->pgsz * spp->pgs_per_oneshotpg,
 	};
 
-	NVMEV_DEBUG_VERBOSE("%s: start_lpn=%lld, len=%lld, end_lpn=%lld", __func__, start_lpn, nr_lba, end_lpn);
+	NVMEV_DEBUG_VERBOSE("%s: start_lpn=%lld, len=%lld, end_lpn=%lld", __func__, start_lpn,
+			    nr_lba, end_lpn);
 	if ((end_lpn / nr_parts) >= spp->tt_pgs) {
-		NVMEV_ERROR("%s: lpn passed FTL range (start_lpn=%lld > tt_pgs=%ld)\n",
-				__func__, start_lpn, spp->tt_pgs);
+		NVMEV_ERROR("%s: lpn passed FTL range (start_lpn=%lld > tt_pgs=%ld)\n", __func__,
+			    start_lpn, spp->tt_pgs);
 		return false;
 	}
 
@@ -1166,7 +1172,7 @@ static bool conv_write(struct nvmev_ns *ns, struct nvmev_request *req, struct nv
 				conv_ftl->waf.external_writes++;
 			}
 		}
-		
+
 		/* update maptbl */
 		set_maptbl_ent(conv_ftl, local_lpn, &ppa);
 		NVMEV_DEBUG("%s: got new ppa %lld, ", __func__, ppa2pgidx(conv_ftl, &ppa));
@@ -1241,7 +1247,7 @@ bool conv_proc_nvme_io_cmd(struct nvmev_ns *ns, struct nvmev_request *req, struc
 		break;
 	default:
 		NVMEV_ERROR("%s: command not implemented: %s (0x%x)\n", __func__,
-				nvme_opcode_string(cmd->common.opcode), cmd->common.opcode);
+			    nvme_opcode_string(cmd->common.opcode), cmd->common.opcode);
 		break;
 	}
 

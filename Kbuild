@@ -3,6 +3,7 @@ CONFIG_NVMEVIRT_NVM := y
 #CONFIG_NVMEVIRT_SSD := y
 #CONFIG_NVMEVIRT_ZNS := y
 #CONFIG_NVMEVIRT_KV := y
+CONFIG_NVMEVIRT_FDP := y
 
 obj-m   := nvmev.o
 nvmev-objs := src/main.o src/pci.o src/admin.o src/io.o src/dma.o
@@ -22,3 +23,5 @@ nvmev-$(CONFIG_NVMEVIRT_ZNS) += src/ssd.o src/zns_ftl.o src/zns_read_write.o src
 
 ccflags-$(CONFIG_NVMEVIRT_KV) += -DBASE_SSD=KV_PROTOTYPE
 nvmev-$(CONFIG_NVMEVIRT_KV) += src/kv_ftl.o src/append_only.o src/bitmap.o
+
+ccflags-$(CONFIG_NVMEVIRT_FDP) += -DCONFIG_NVMEVIRT_FDP_ENABLED

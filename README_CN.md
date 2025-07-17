@@ -1,3 +1,15 @@
+# FDPVirt Quick Start
+## 环境配置
+  同Nvmevirt
+
+## 配置Kbuild
+CONFIG_NVMEVIRT_NVM := y
+#CONFIG_NVMEVIRT_SSD := y
+#CONFIG_NVMEVIRT_ZNS := y
+#CONFIG_NVMEVIRT_KV := y
+CONFIG_NVMEVIRT_FDP := y
+
+
 # NVMeVirt 架构
 
 
