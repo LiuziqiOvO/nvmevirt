@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
-#include "nvmev.h"
-#include "ssd.h"
-#include "zns_ftl.h"
+#include "../include/nvmev.h"
+#include "../include/ssd.h"
+#include "../include/zns_ftl.h"
 
 static inline uint32_t __nr_lbas_from_rw_cmd(struct nvme_rw_command *cmd)
 {

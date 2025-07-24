@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
-#include "nvmev.h"
-#include "ssd.h"
-#include "zns_ftl.h"
+#include "../include/nvmev.h"
+#include "../include/ssd.h"
+#include "../include/zns_ftl.h"
 
 static uint32_t __zmgmt_send_close_zone(struct zns_ftl *zns_ftl, uint64_t zid)
 {

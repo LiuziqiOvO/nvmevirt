@@ -6,9 +6,9 @@
 #include <linux/highmem.h>
 #include <linux/sched/clock.h>
 
-#include "nvmev.h"
-#include "ssd.h"
-#include "zns_ftl.h"
+#include "../include/nvmev.h"
+#include "../include/ssd.h"
+#include "../include/zns_ftl.h"
 
 static uint64_t __prp_transfer_data(uint64_t prp1, uint64_t prp2, void *buffer, uint64_t length,
 				    uint32_t io)

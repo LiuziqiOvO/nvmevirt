@@ -6,11 +6,11 @@
 #include <linux/highmem.h>
 #include <linux/sched/clock.h>
 
-#include "nvmev.h"
-#include "dma.h"
+#include "../include/nvmev.h"
+#include "../include/dma.h"
 
 #if (SUPPORTED_SSD_TYPE(CONV) || SUPPORTED_SSD_TYPE(ZNS))
-#include "ssd.h"
+#include "../include/ssd.h"
 #else
 struct buffer;
 #endif

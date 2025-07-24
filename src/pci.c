@@ -7,8 +7,8 @@
 #include <linux/percpu-defs.h>
 #include <linux/sched/clock.h>
 
-#include "nvmev.h"
-#include "pci.h"
+#include "../include/nvmev.h"
+#include "../include/pci.h"
 
 #ifdef CONFIG_NVMEV_FAST_X86_IRQ_HANDLING
 static int apicid_to_cpuid[256];

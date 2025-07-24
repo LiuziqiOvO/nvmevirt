@@ -6,8 +6,8 @@
 #include <linux/hashtable.h>
 #include <linux/kernel.h>
 
-#include "nvmev.h"
-#include "append_only.h"
+#include "../include/nvmev.h"
+#include "../include/append_only.h"
 
 static unsigned long long latest;
 static unsigned long long dev_size;

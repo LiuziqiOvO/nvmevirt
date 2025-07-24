@@ -4,7 +4,7 @@
  * All rights reserved.
  */
 
-#include "../nvmev.h"
+#include "../../include/nvmev.h"
 #include "pqueue.h"
 
 #define left(i) ((i) << 1)
@@ -17,8 +17,8 @@ pqueue_t *pqueue_init(size_t n, pqueue_cmp_pri_f cmppri, pqueue_get_pri_f getpri
 	pqueue_t *q;
 
 	pr_info_once(NVMEV_DRV_NAME ": pqueue: "
-		     "Copyright (c) 2014, Volkan Yazıcı <volkan.yazici@gmail.com>. "
-		     "All rights reserved.\n");
+				    "Copyright (c) 2014, Volkan Yazıcı <volkan.yazici@gmail.com>. "
+				    "All rights reserved.\n");
 
 	if (!(q = kmalloc(sizeof(pqueue_t), GFP_KERNEL)))
 		return NULL;

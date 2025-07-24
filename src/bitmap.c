@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
-#include "bitmap.h"
-#include "nvmev.h"
+#include "../include/bitmap.h"
+#include "../include/nvmev.h"
 
 static long small_nbits;
 static long large_nbits;

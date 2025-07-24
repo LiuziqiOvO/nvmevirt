@@ -16,12 +16,23 @@
 #include <asm/e820/api.h>
 #endif
 
-#include "nvmev.h"
-#include "conv_ftl.h"
-#include "zns_ftl.h"
-#include "simple_ftl.h"
-#include "kv_ftl.h"
-#include "dma.h"
+#include "../include/nvmev.h"
+#ifdef CONFIG_NVMEVIRT_SSD
+#include "../include/conv_ftl.h"
+#endif
+#ifdef CONFIG_NVMEVIRT_FDP
+#include "../include/fdp_ftl.h"
+#endif
+#ifdef CONFIG_NVMEVIRT_ZNS
+#include "../include/zns_ftl.h"
+#endif
+#ifdef CONFIG_NVMEVIRT_NVM
+#include "../include/simple_ftl.h"
+#endif
+#ifdef CONFIG_NVMEVIRT_KV
+#include "../include/kv_ftl.h"
+#endif
+#include "../include/dma.h"
 
 /****************************************************************
  * Memory Layout
@@ -273,23 +284,26 @@ static int __validate_configs(void)
 static void __print_perf_configs(void)
 {
 #ifdef CONFIG_NVMEV_VERBOSE
-	unsigned long unit_perf_kb =
-			nvmev_vdev->config.nr_io_units << (nvmev_vdev->config.io_unit_shift - 10);
+	unsigned long unit_perf_kb = nvmev_vdev->config.nr_io_units
+				     << (nvmev_vdev->config.io_unit_shift - 10);
 	struct nvmev_config *cfg = &nvmev_vdev->config;
 
 	NVMEV_INFO("=============== Configurations ===============\n");
-	NVMEV_INFO("* IO units : %d x %d\n",
-			cfg->nr_io_units, 1 << cfg->io_unit_shift);
+	NVMEV_INFO("* IO units : %d x %d\n", cfg->nr_io_units, 1 << cfg->io_unit_shift);
 	NVMEV_INFO("* I/O times\n");
-	NVMEV_INFO("  Read     : %u + %u x + %u ns\n",
-				cfg->read_delay, cfg->read_time, cfg->read_trailing);
-	NVMEV_INFO("  Write    : %u + %u x + %u ns\n",
-				cfg->write_delay, cfg->write_time, cfg->write_trailing);
+	NVMEV_INFO("  Read     : %u + %u x + %u ns\n", cfg->read_delay, cfg->read_time,
+		   cfg->read_trailing);
+	NVMEV_INFO("  Write    : %u + %u x + %u ns\n", cfg->write_delay, cfg->write_time,
+		   cfg->write_trailing);
 	NVMEV_INFO("* Bandwidth\n");
 	NVMEV_INFO("  Read     : %lu MiB/s\n",
-			(1000000000UL / (cfg->read_time + cfg->read_delay + cfg->read_trailing)) * unit_perf_kb >> 10);
+		   (1000000000UL / (cfg->read_time + cfg->read_delay + cfg->read_trailing)) *
+				   unit_perf_kb >>
+			   10);
 	NVMEV_INFO("  Write    : %lu MiB/s\n",
-			(1000000000UL / (cfg->write_time + cfg->write_delay + cfg->write_trailing)) * unit_perf_kb >> 10);
+		   (1000000000UL / (cfg->write_time + cfg->write_delay + cfg->write_trailing)) *
+				   unit_perf_kb >>
+			   10);
 #endif
 }
 
@@ -426,10 +440,9 @@ static const struct file_operations proc_file_fops = {
 
 static void NVMEV_STORAGE_INIT(struct nvmev_dev *nvmev_vdev)
 {
-	NVMEV_INFO("Storage: %#010lx-%#010lx (%lu MiB)\n",
-			nvmev_vdev->config.storage_start,
-			nvmev_vdev->config.storage_start + nvmev_vdev->config.storage_size,
-			BYTE_TO_MB(nvmev_vdev->config.storage_size));
+	NVMEV_INFO("Storage: %#010lx-%#010lx (%lu MiB)\n", nvmev_vdev->config.storage_start,
+		   nvmev_vdev->config.storage_start + nvmev_vdev->config.storage_size,
+		   BYTE_TO_MB(nvmev_vdev->config.storage_size));
 
 	nvmev_vdev->io_unit_stat = kzalloc(
 		sizeof(*nvmev_vdev->io_unit_stat) * nvmev_vdev->config.nr_io_units, GFP_KERNEL);
@@ -532,13 +545,35 @@ static void NVMEV_NAMESPACE_INIT(struct nvmev_dev *nvmev_vdev)
 			size = min(NS_CAPACITY(i), remaining_capacity);
 
 		if (NS_SSD_TYPE(i) == SSD_TYPE_NVM)
+#ifdef CONFIG_NVMEVIRT_NVM
 			simple_init_namespace(&ns[i], i, size, ns_addr, disp_no);
+#else
+			BUG_ON(1);
+#endif
 		else if (NS_SSD_TYPE(i) == SSD_TYPE_CONV)
+#ifdef CONFIG_NVMEVIRT_SSD
 			conv_init_namespace(&ns[i], i, size, ns_addr, disp_no);
+#else
+			fdp_init_namespace(&ns[i], i, size, ns_addr, disp_no);
+#endif
+		else if (NS_SSD_TYPE(i) == SSD_TYPE_FDP)
+#ifdef CONFIG_NVMEVIRT_FDP
+			fdp_init_namespace(&ns[i], i, size, ns_addr, disp_no);
+#else
+			BUG_ON(1);
+#endif
 		else if (NS_SSD_TYPE(i) == SSD_TYPE_ZNS)
+#ifdef CONFIG_NVMEVIRT_ZNS
 			zns_init_namespace(&ns[i], i, size, ns_addr, disp_no);
+#else
+			BUG_ON(1);
+#endif
 		else if (NS_SSD_TYPE(i) == SSD_TYPE_KV)
+#ifdef CONFIG_NVMEVIRT_KV
 			kv_init_namespace(&ns[i], i, size, ns_addr, disp_no);
+#else
+			BUG_ON(1);
+#endif
 		else
 			BUG_ON(1);
 
@@ -560,13 +595,35 @@ static void NVMEV_NAMESPACE_FINAL(struct nvmev_dev *nvmev_vdev)
 
 	for (i = 0; i < nr_ns; i++) {
 		if (NS_SSD_TYPE(i) == SSD_TYPE_NVM)
+#ifdef CONFIG_NVMEVIRT_NVM
 			simple_remove_namespace(&ns[i]);
+#else
+			BUG_ON(1);
+#endif
 		else if (NS_SSD_TYPE(i) == SSD_TYPE_CONV)
+#ifdef CONFIG_NVMEVIRT_SSD
 			conv_remove_namespace(&ns[i]);
+#else
+			fdp_remove_namespace(&ns[i]);
+#endif
+		else if (NS_SSD_TYPE(i) == SSD_TYPE_FDP)
+#ifdef CONFIG_NVMEVIRT_FDP
+			fdp_remove_namespace(&ns[i]);
+#else
+			BUG_ON(1);
+#endif
 		else if (NS_SSD_TYPE(i) == SSD_TYPE_ZNS)
+#ifdef CONFIG_NVMEVIRT_ZNS
 			zns_remove_namespace(&ns[i]);
+#else
+			BUG_ON(1);
+#endif
 		else if (NS_SSD_TYPE(i) == SSD_TYPE_KV)
+#ifdef CONFIG_NVMEVIRT_KV
 			kv_remove_namespace(&ns[i]);
+#else
+			BUG_ON(1);
+#endif
 		else
 			BUG_ON(1);
 	}
@@ -594,10 +651,13 @@ static void __print_base_config(void)
 	case WD_ZN540:
 		type = "WD ZN540 ZNS SSD";
 		break;
+	case FDP_PROTOTYPE:
+		type = "FDP SSD Prototype";
+		break;
 	}
 
-	NVMEV_INFO("Version %x.%x for >> %s <<\n",
-			(NVMEV_VERSION & 0xff00) >> 8, (NVMEV_VERSION & 0x00ff), type);
+	NVMEV_INFO("Version %x.%x for >> %s <<\n", (NVMEV_VERSION & 0xff00) >> 8,
+		   (NVMEV_VERSION & 0x00ff), type);
 }
 
 static int NVMeV_init(void)

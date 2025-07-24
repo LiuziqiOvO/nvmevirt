@@ -9,7 +9,7 @@
 #include <linux/sched/task.h>
 #include <linux/slab.h>
 
-#include "dma.h"
+#include "../include/dma.h"
 
 // Size of the memcpy test buffer
 static unsigned int test_buf_size = 4096;

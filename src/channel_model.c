@@ -5,8 +5,8 @@
 #include <linux/highmem.h>
 #include <linux/sched/clock.h>
 
-#include "nvmev.h"
-#include "channel_model.h"
+#include "../include/nvmev.h"
+#include "../include/channel_model.h"
 
 static inline unsigned long long __get_wallclock(void)
 {

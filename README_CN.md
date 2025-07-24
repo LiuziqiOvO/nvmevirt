@@ -2,15 +2,22 @@
 ## 环境配置
   同Nvmevirt
 
-1.配置Kbuild
+1. 配置SSD类型
+NVMeVirt支持模拟多种不同类型的SSD设备，切换方法是通过修改Kbuild文件中的配置选项：
+```bash
 CONFIG_NVMEVIRT_NVM := y
 #CONFIG_NVMEVIRT_SSD := y
 #CONFIG_NVMEVIRT_ZNS := y
 #CONFIG_NVMEVIRT_KV := y
 CONFIG_NVMEVIRT_FDP := y
+```
 
-2.编译
-make
+2. 编译
+
+每次切换SSD类型都需要重新编译内核模块
+不同SSD类型会编译进不同的源文件，如simple_ftl.o用于NVM，conv_ftl.o用于传统SSD等
+项目支持多种高级存储配置，如NVMe-oF目标卸载、内核绕过和PCI点对点通信
+推荐使用isolcpus配置来避免调度器将任务放在NVMeVirt使用的CPU上
 
 ## 启动
 ```bash 
@@ -23,40 +30,8 @@ sudo dmesg | grep  NVMe
 
 ```
 
-> Ubuntu22.04，需要手动安装nvme-cli验证
-1. ubuntu22.04默认的nvme-cli 1.16不支持FDP，手动编译安装最新的2.14，
-	1. 依赖于libnvme，默认的版本是1.3，至少要1.6
 
-```bash
-#手动安装libnvme
-git clone https://github.com/linux-nvme/libnvme.git
-cd libnvme
-git checkout v1.10  # 
-meson setup build
-ninja -C build
-sudo ninja -C build install
-# 更新动态链接库
-sudo ldconfig
-# 验证版本:是否1.3->1.10
-pkg-config --modversion libnvme
-```
-
-卸载掉旧的nvme-cli,手动安装v2.10(匹配libnvme v1.10)
-
-```bash
-rm -rf build
-meson setup build
-ninja -C build
-sudo ninja -C build install
-# 验证：
-nvme --version                           
-nvme version 2.10 (git 2.10)
-libnvme version 1.10 (git 1.10)
-```
-
-
-# NVMeVirt 架构
-
+# FDPVirt 架构
 
 ```mermaid
 graph TD
@@ -79,7 +54,6 @@ graph TD
     F -->|Manages| G["Reclaim Units"]
     F -->|Uses| H["Write Pointer Array"]
 ```
-
 
 # Quick Start
 

@@ -3,7 +3,7 @@
 #include <linux/ktime.h>
 #include <linux/sched/clock.h>
 
-#include "simple_ftl.h"
+#include "../include/simple_ftl.h"
 
 static inline unsigned long long __get_wallclock(void)
 {

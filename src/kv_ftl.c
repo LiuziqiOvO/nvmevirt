@@ -4,8 +4,8 @@
 #include <linux/highmem.h>
 #include <linux/sched/clock.h>
 
-#include "nvmev.h"
-#include "kv_ftl.h"
+#include "../include/nvmev.h"
+#include "../include/kv_ftl.h"
 
 static const struct allocator_ops append_only_ops = {
 	.init = append_only_allocator_init,

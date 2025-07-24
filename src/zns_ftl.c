@@ -3,9 +3,9 @@
 #include <linux/ktime.h>
 #include <linux/sched/clock.h>
 
-#include "nvmev.h"
-#include "ssd.h"
-#include "zns_ftl.h"
+#include "../include/nvmev.h"
+#include "../include/ssd.h"
+#include "../include/zns_ftl.h"
 
 static void __init_descriptor(struct zns_ftl *zns_ftl)
 {

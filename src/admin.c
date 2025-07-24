@@ -1,8 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
 #include "nvmev.h"
+#ifdef CONFIG_NVMEVIRT_SSD
 #include "conv_ftl.h"
+#endif
+#ifdef CONFIG_NVMEVIRT_ZNS
 #include "zns_ftl.h"
+#endif
+#ifdef CONFIG_NVMEVIRT_FDP
+#include "fdp_ftl.h"
+#endif
 
 #define sq_entry(entry_id) \
 	queue->nvme_sq[SQ_ENTRY_TO_PAGE_NUM(entry_id)][SQ_ENTRY_TO_PAGE_OFFSET(entry_id)]
@@ -355,6 +362,7 @@ static void __nvmev_admin_identify_namespace_desc(int eid)
 	__make_cq_entry(eid, NVME_SC_SUCCESS);
 }
 
+#ifdef CONFIG_NVMEVIRT_ZNS
 static void __nvmev_admin_identify_zns_namespace(int eid)
 {
 	struct nvmev_admin_queue *queue = nvmev_vdev->admin_q;
@@ -413,6 +421,7 @@ static void __nvmev_admin_identify_zns_ctrl(int eid)
 
 	__make_cq_entry(eid, NVME_SC_SUCCESS);
 }
+#endif
 
 static void __nvmev_admin_identify_ctrl(int eid)
 {
@@ -456,11 +465,13 @@ static void __nvmev_admin_identify(int eid)
 		__nvmev_admin_identify_namespace_desc(eid);
 		break;
 	case 0x05:
+#ifdef CONFIG_NVMEVIRT_ZNS
 		__nvmev_admin_identify_zns_namespace(eid);
 		break;
 	case 0x06:
 		__nvmev_admin_identify_zns_ctrl(eid);
 		break;
+#endif
 	default:
 		__make_cq_entry(eid, NVME_SC_INVALID_OPCODE);
 		NVMEV_ERROR("I don't know %d\n", cns);

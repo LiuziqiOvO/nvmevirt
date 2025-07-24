@@ -3,8 +3,8 @@
 #include <linux/ktime.h>
 #include <linux/sched/clock.h>
 
-#include "nvmev.h"
-#include "ssd.h"
+#include "../include/nvmev.h"
+#include "../include/ssd.h"
 
 static inline uint64_t __get_ioclock(struct ssd *ssd)
 {
