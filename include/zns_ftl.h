@@ -6,6 +6,7 @@
 #include <linux/types.h>
 #include "nvmev.h"
 #include "nvme_zns.h"
+#include "ssd.h"
 
 #define NVMEV_ZNS_DEBUG(string, args...) //printk(KERN_INFO "%s: " string, NVMEV_DRV_NAME, ##args)
 

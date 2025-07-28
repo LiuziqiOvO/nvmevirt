@@ -29,7 +29,8 @@ static void __signal_irq(const char *type, unsigned int irq)
 	unsigned int target = irqc->dest_apicid;
 	unsigned int target_cpu = apicid_to_cpuid[target];
 
-	NVMEV_DEBUG_VERBOSE("irq: %s %d, vector %d, apic %d, cpu %d\n", type, irq, irqc->vector, target, target_cpu);
+	NVMEV_DEBUG_VERBOSE("irq: %s %d, vector %d, apic %d, cpu %d\n", type, irq, irqc->vector,
+			    target, target_cpu);
 	apic->send_IPI(target_cpu, irqc->vector);
 
 	return;
@@ -229,8 +230,8 @@ bool nvmev_proc_bars(void)
 		goto out;
 	}
 	if (old_bar->cc != bar->u_cc) {
-		NVMEV_DEBUG("%s: cc 0x%x:%x -> 0x%x:%x\n", __func__, old_bar->cc, old_bar->csts, bar->u_cc,
-			    bar->u_csts);
+		NVMEV_DEBUG("%s: cc 0x%x:%x -> 0x%x:%x\n", __func__, old_bar->cc, old_bar->csts,
+			    bar->u_cc, bar->u_csts);
 		/* Enable */
 		if (bar->cc.en == 1) {
 			if (nvmev_vdev->admin_q) {
@@ -326,8 +327,8 @@ static int nvmev_pci_write(struct pci_bus *bus, unsigned int devfn, int where, i
 	} else {
 		// PCI_EXT_CAP
 	}
-	NVMEV_DEBUG_VERBOSE("[W] 0x%x, mask: 0x%x, val: 0x%x -> 0x%x, size: %d, new: 0x%x\n", where, mask,
-		    val, _val, size, (val & (~mask)) | (_val & mask));
+	NVMEV_DEBUG_VERBOSE("[W] 0x%x, mask: 0x%x, val: 0x%x -> 0x%x, size: %d, new: 0x%x\n", where,
+			    mask, val, _val, size, (val & (~mask)) | (_val & mask));
 
 	val = (val & (~mask)) | (_val & mask);
 	memcpy(nvmev_vdev->virtDev + where, &val, size);
@@ -345,7 +346,6 @@ static struct pci_sysdata nvmev_pci_sysdata = {
 	.node = 0,
 };
 
-
 static void __dump_pci_dev(struct pci_dev *dev)
 {
 	/*
@@ -362,7 +362,8 @@ static void __dump_pci_dev(struct pci_dev *dev)
 
 static void __init_nvme_ctrl_regs(struct pci_dev *dev)
 {
-	struct nvme_ctrl_regs *bar = memremap(pci_resource_start(dev, 0), PAGE_SIZE * 2, MEMREMAP_WT);
+	struct nvme_ctrl_regs *bar =
+		memremap(pci_resource_start(dev, 0), PAGE_SIZE * 2, MEMREMAP_WT);
 	BUG_ON(!bar);
 
 	nvmev_vdev->bar = bar;
@@ -412,11 +413,11 @@ static struct pci_bus *__create_pci_bus(void)
 		__init_nvme_ctrl_regs(dev);
 
 		nvmev_vdev->old_dbs = kzalloc(PAGE_SIZE, GFP_KERNEL);
-		BUG_ON(!nvmev_vdev->old_dbs && "allocating old DBs memory");
+		BUG_ON(!nvmev_vdev->old_dbs);
 		memcpy(nvmev_vdev->old_dbs, nvmev_vdev->dbs, sizeof(*nvmev_vdev->old_dbs));
 
 		nvmev_vdev->old_bar = kzalloc(PAGE_SIZE, GFP_KERNEL);
-		BUG_ON(!nvmev_vdev->old_bar && "allocating old BAR memory");
+		BUG_ON(!nvmev_vdev->old_bar);
 		memcpy(nvmev_vdev->old_bar, nvmev_vdev->bar, sizeof(*nvmev_vdev->old_bar));
 
 		nvmev_vdev->msix_table =
@@ -593,7 +594,7 @@ static void PCI_EXTCAP_SETTINGS(struct pci_ext_cap *ext_cap)
 	ext_cap = ext_cap_base + 0x1a0;
 	ext_cap->cid = PCI_EXT_CAP_ID_SECPCI;
 	ext_cap->cver = 1;
-	ext_cap->next = 0; 
+	ext_cap->next = 0;
 
 	/*
 	*(ext_cap + 1) = (struct pci_ext_cap) {

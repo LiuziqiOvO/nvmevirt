@@ -554,7 +554,7 @@ static void NVMEV_NAMESPACE_INIT(struct nvmev_dev *nvmev_vdev)
 #ifdef CONFIG_NVMEVIRT_SSD
 			conv_init_namespace(&ns[i], i, size, ns_addr, disp_no);
 #else
-			fdp_init_namespace(&ns[i], i, size, ns_addr, disp_no);
+			BUG_ON(1);
 #endif
 		else if (NS_SSD_TYPE(i) == SSD_TYPE_FDP)
 #ifdef CONFIG_NVMEVIRT_FDP
@@ -604,7 +604,7 @@ static void NVMEV_NAMESPACE_FINAL(struct nvmev_dev *nvmev_vdev)
 #ifdef CONFIG_NVMEVIRT_SSD
 			conv_remove_namespace(&ns[i]);
 #else
-			fdp_remove_namespace(&ns[i]);
+			BUG_ON(1);
 #endif
 		else if (NS_SSD_TYPE(i) == SSD_TYPE_FDP)
 #ifdef CONFIG_NVMEVIRT_FDP
